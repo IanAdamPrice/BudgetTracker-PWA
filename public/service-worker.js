@@ -32,7 +32,7 @@ self.addEventListener('activate', function (e) {
     caches.keys().then(function (keyList) {
       let cacheKeeplist = keyList.filter(function (key) {
         return key.indexOf(APP_PREFIX);
-      })
+      });
       cacheKeeplist.push(CACHE_NAME);
 
       return Promise.all(keyList.map(function (key, i) {
