@@ -3,6 +3,7 @@ const VERSION = 'version_01';
 const CACHE_NAME = APP_PREFIX + VERSION;
 
 const FILES_TO_CACHE = [
+    '/',
     './index.html',
     './css/styles.css',
     './js/index.js',
@@ -15,48 +16,47 @@ const FILES_TO_CACHE = [
     './icons/icon-144x144.png',
     './icons/icon-128x128.png',
     './icons/icon-96x96.png',
-    './icons/icon-72x72.png'
+    './icons/icon-72x72.png',
+    'https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css',
+    'https://cdn.jsdelivr.net/npm/chart.js@2.8.0'
 ];
 
 self.addEventListener('install', function (e) {
     e.waitUntil(
-        caches.open(CACHE_NAME).then(function (cache) {
+        caches.open(CACHE_NAME)
+          .then(function(cache) {
             console.log('installing cache : ' + CACHE_NAME);
             return cache.addAll(FILES_TO_CACHE)
         })
     )
 });
 
-self.addEventListener('activate', function (e) {
-    e.waitUntil(
-        caches.keys().then(function (keyList) {
-            let cacheKeeplist = keyList.filter(function (key) {
-                return key.indexOf(APP_PREFIX);
-            });
-            cacheKeeplist.push(CACHE_NAME);
-
-            return Promise.all(keyList.map(function (key, i) {
-                if (cacheKeeplist.indexOf(key) === -1) {
-                    console.log('deleting cache : ' + keyList[i] );
-                    return caches.delete(keyList[i]);
-                }
-            }));
+self.addEventListener('fetch', function(event) {
+  console.log('used to intercept requests so we can check for the file or data in the cache');
+  event.respondWith(
+      fetch(event.request)
+        .catch(() => {
+          return caches.open(CACHE_NAME)
+            .then((cache) => {
+              return cache.match(event.request)
+            })
         })
-    )
-});
+  )
+})
 
-self.addEventListener('fetch', function (e) {
-    console.log('fetch request : ' + e.request.url);
-    e.respondWith(
-        caches.match(e.request).then(function (request) {
-            if (request) { 
-                console.log('responding with cache : ' + e.request.url);
-                return request
-            } else {       
-                console.log('file is not cached, fetching : ' + e.request.url);
-                return fetch(e.request)
+self.addEventListener('activate', function(event) {
+  console.log('this event triggers when the service worker activates');
+  event.waitUntil(
+      caches.keys()
+        .then((keyList) => {
+          return Promise.all(keyList.map((key) => {
+            if (key !== CACHE_NAME) {
+              console.log('[ServiceWorker] Removing old cache', key)
+              return caches.delete(key)
             }
-
+          }))
         })
-    )
-});
+        .then(() => self.clients.claim())
+  )
+})
+
